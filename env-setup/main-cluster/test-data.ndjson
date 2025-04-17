@@ -1,0 +1,9 @@
+POST _bulk
+{ "index": { "_index": "test_a1" } }
+{ "name": "Olive" }
+{ "index": { "_index": "test_a2" } }
+{ "name": "Tomato" }
+{ "index": { "_index": "test_b1" } }
+{ "name": "Bread" }
+{ "index": { "_index": "test_b2" } }
+{ "name": "Artichoke" }

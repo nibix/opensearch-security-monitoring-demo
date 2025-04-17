@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log4j2-config
+  namespace: default
+data:
+  log4j2.properties: |
+    status = error
+    name = JsonConfig
+
+    appender.console.type = Console
+    appender.console.name = console
+    appender.console.layout.type = OpenSearchJsonLayout
+    appender.console.layout.type_name = json_logger
+
+    rootLogger.level = info
+    rootLogger.appenderRef.console.ref = console

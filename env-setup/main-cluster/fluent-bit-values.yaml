@@ -1,0 +1,109 @@
+#serviceAccount:
+##  create: true
+#  name: fluent-bit
+
+logLevel: debug
+
+config:
+  # The "inputs" section defines where to read logs from. We read here only the opensearch logs and make them available
+  # under the opensearch.main-cluster.<path.to.log.file> tag.
+  # Docs: https://docs.fluentbit.io/manual/pipeline/inputs/tail
+  inputs: |
+    [INPUT]
+        Name              tail
+        Tag               opensearch.*
+        Path              /var/log/pods/default_main-cluster-*/opensearch/*.log
+        Parser            docker_json
+        Read_from_Head    true
+        Refresh_Interval  9
+        Skip_Long_Lines   On
+#        Multiline.parser  docker_opensearch_multiline
+
+  # The "filters" section allows to enrich and filter data. Here, we limit the processed logs to the default K8s namespace.
+  # Thus, we are excluding logs from the monitoring cluster.
+  # Docs: https://docs.fluentbit.io/manual/pipeline/filters
+  # TODO at the moment this fails Request (ns=default, pod=iners.main-cluster-masters-0) http_do=0, HTTP Status: 404
+  #filters: |
+  #  [FILTER]
+  #      Name                kubernetes
+  #      Match               opensearch.*
+  #      Merge_Log           On
+  #      Keep_Log            Off
+  #  [FILTER]
+  #      Name                grep
+  #      Match               opensearch.*
+  #      Regex               kubernetes.namespace_name  ^default$
+
+
+  # The filter of type "parser" is applied to the "log" fields extracted from the docker log output; this is specified
+  # using the "key_name" attribute.
+  filters: |
+    [FILTER]
+        Name   parser
+        Match  opensearch.*
+        Key_Name log
+        Parser opensearch_inner
+        Preserve_Key True
+        Reserve_Data True   
+    [FILTER]
+        Name   parser
+        Match  opensearch.*
+        Key_Name message
+        Parser missing_index_privs
+        Preserve_Key True
+        Reserve_Data True   
+
+  # Index logs directly to OpenSearch
+  # Docs: https://docs.fluentbit.io/manual/pipeline/outputs
+  outputs: |
+    [OUTPUT]
+        Name            opensearch
+        Match           opensearch.*
+        Host            monitoring-cluster.monitoring.svc
+        Port            9200
+        Index           opensearch-logs
+        Suppress_Type_Name On
+        Replace_Dots    On
+        HTTP_User       fluentbit
+        HTTP_Passwd     secret
+        TLS             On
+        TLS.Verify      Off
+#    [OUTPUT]
+#        Name   stdout
+#        Match  opensearch.*
+#        Format json
+
+#  parsers: |
+
+
+  customParsers: |
+    [PARSER]
+        Name        docker_json
+        Format      json
+        Time_Key    time
+        Time_Format %Y-%m-%dT%H:%M:%S.%LZ
+    [PARSER]
+        Name        opensearch_inner
+        Format      regex
+        Regex       ^\[(?<timestamp>[^]]+)\]\[(?<level>[A-Z]+)\s*\]\[(?<class>[^\]]+)\]\s\[(?<node>[^\]]+)\]\s(?<message>.*)
+        Time_Key    timestamp
+        Time_Format %Y-%m-%dT%H:%M:%S,%L
+    [PARSER]
+        Name        missing_index_privs
+        Format      regex
+        Regex       ^No (?<privtype>[a-z]+)-level perm match for User \[name=(?<user>[^\],]+),.*?allIndices=\[(?<allIndices>[^\]]*)\].*?Action \[(?<action>[^\]]+)\].*$
+    [MULTILINE_PARSER]
+        Name         docker_opensearch_multiline
+        Type         regex
+        Flush_Timeout 1000  
+        Rule      "start_state" "/^\\[.*\\]\\[.*\\]\\[.*\\]/" "cont"
+        Rule      "cont"        "/^\\s+|^\\tat|^Caused by:|^[a-z]/"         "cont"  
+
+#daemonSetVolumeMounts:
+#  - name: varlog
+#    mountPath: /var/log/
+#
+#daemonSetVolumes:
+#  - name: varlog
+#    hostPath:
+#      path: /var/log/
