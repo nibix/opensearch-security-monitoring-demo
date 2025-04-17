@@ -90,30 +90,6 @@ kubectl logs <pod name>
 kubectl port-forward svc/main-cluster-dashboards 5601 
 ```
 
-The following does not work:
-
-8.1. Create host names for your local system
-
-```bash
-echo "$(minikube ip) dashboards.main.local" | sudo tee -a /etc/hosts
-echo "$(minikube ip) dashboards.monitoring.local" | sudo tee -a /etc/hosts
-```
-
-8.2. Enable the ingress plugin in Minikube
-
-```bash
-minikube addons enable ingress
-```
-
-8.3. Activate the ingress
-
-```bash
-kubectl apply -f main-cluster/dashboards-ingress.yaml
-```
-
-```bash
-kubectl port-forward svc/main-cluster-dashboards 5601
-```
 
 9. Create namespace for monitoring OpenSearch cluster
 
