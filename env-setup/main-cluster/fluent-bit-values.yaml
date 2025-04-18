@@ -13,11 +13,10 @@ config:
         Name              tail
         Tag               opensearch.*
         Path              /var/log/pods/default_main-cluster-*/opensearch/*.log
-        Parser            docker_json
+        multiline.parser  docker
         Read_from_Head    true
         Refresh_Interval  9
         Skip_Long_Lines   On
-#        Multiline.parser  docker_opensearch_multiline
 
   # The "filters" section allows to enrich and filter data. Here, we limit the processed logs to the default K8s namespace.
   # Thus, we are excluding logs from the monitoring cluster.
@@ -39,19 +38,24 @@ config:
   # using the "key_name" attribute.
   filters: |
     [FILTER]
+        name   multiline
+        match  opensearch.*
+        multiline.key_content log
+        multiline.parser opensearch_multiline    
+    [FILTER]
         Name   parser
         Match  opensearch.*
         Key_Name log
-        Parser opensearch_inner
+        Parser opensearch_std_log
         Preserve_Key True
-        Reserve_Data True   
+        Reserve_Data True    
     [FILTER]
         Name   parser
         Match  opensearch.*
         Key_Name message
-        Parser missing_index_privs
+        Parser opensearch_missing_index_privs
         Preserve_Key True
-        Reserve_Data True   
+        Reserve_Data True
 
   # Index logs directly to OpenSearch
   # Docs: https://docs.fluentbit.io/manual/pipeline/outputs
@@ -77,27 +81,23 @@ config:
 
 
   customParsers: |
+    [MULTILINE_PARSER]
+        Name         opensearch_multiline
+        Type         regex
+        Flush_Timeout 1000
+        Rule      "start_state" "/^\[.*\]\[.*\]\[.*\]/" "cont"
+        Rule      "cont"        "/^[^\[]/"         "cont"
     [PARSER]
-        Name        docker_json
-        Format      json
-        Time_Key    time
-        Time_Format %Y-%m-%dT%H:%M:%S.%LZ
-    [PARSER]
-        Name        opensearch_inner
+        Name        opensearch_std_log
         Format      regex
         Regex       ^\[(?<timestamp>[^]]+)\]\[(?<level>[A-Z]+)\s*\]\[(?<class>[^\]]+)\]\s\[(?<node>[^\]]+)\]\s(?<message>.*)
         Time_Key    timestamp
         Time_Format %Y-%m-%dT%H:%M:%S,%L
     [PARSER]
-        Name        missing_index_privs
+        Name        opensearch_missing_index_privs
         Format      regex
         Regex       ^No (?<privtype>[a-z]+)-level perm match for User \[name=(?<user>[^\],]+),.*?allIndices=\[(?<allIndices>[^\]]*)\].*?Action \[(?<action>[^\]]+)\].*$
-    [MULTILINE_PARSER]
-        Name         docker_opensearch_multiline
-        Type         regex
-        Flush_Timeout 1000  
-        Rule      "start_state" "/^\\[.*\\]\\[.*\\]\\[.*\\]/" "cont"
-        Rule      "cont"        "/^\\s+|^\\tat|^Caused by:|^[a-z]/"         "cont"  
+
 
 #daemonSetVolumeMounts:
 #  - name: varlog
