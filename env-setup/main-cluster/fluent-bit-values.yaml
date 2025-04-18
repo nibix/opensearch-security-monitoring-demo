@@ -90,7 +90,7 @@ config:
     [PARSER]
         Name        opensearch_std_log
         Format      regex
-        Regex       ^\[(?<timestamp>[^]]+)\]\[(?<level>[A-Z]+)\s*\]\[(?<class>[^\]]+)\]\s\[(?<node>[^\]]+)\]\s(?<message>.*)
+        Regex       ^\[(?<timestamp>[^]]+)\]\[(?<level>[A-Z]+)\s*\]\[(?<class>[^\]]+)\]\s\[(?<node>[^\]]+)\]\[(?<user>[^\]]+)\]\s(?<message>.*)
         Time_Key    timestamp
         Time_Format %Y-%m-%dT%H:%M:%S,%L
     [PARSER]

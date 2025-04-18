@@ -24,12 +24,12 @@ spec:
     drainDataNodes: true
     additionalConfig:
       path.logs: /usr/share/opensearch/logs/
-    #additionalVolumes:
-    #  - name: log4j2-config
-    #    path: /usr/share/opensearch/config/log4j2.properties
-    #    subPath: log4j2.properties
-    #    configMap:
-    #      name: log4j2-config
+    additionalVolumes:
+      - name: log4j2-config
+        path: /usr/share/opensearch/config/log4j2.properties
+        subPath: log4j2.properties
+        configMap:
+          name: log4j2-config
   dashboards:
     tls:
       enable: true
