@@ -71,7 +71,7 @@ config:
   outputs: |
     [OUTPUT]
         Name            opensearch
-        Match           opensearch.*
+        Match           opensearch.logs.*
         Host            monitoring-cluster.monitoring.svc
         Port            9200
         Index           opensearch-logs
@@ -81,7 +81,18 @@ config:
         HTTP_Passwd     secret
         TLS             On
         TLS.Verify      Off
-
+    [OUTPUT]
+        Name            opensearch
+        Match           opensearch.index_privilege_matrix*
+        Host            monitoring-cluster.monitoring.svc
+        Port            9200
+        Index           opensearch-missing-index-privileges-logs
+        Suppress_Type_Name On
+        Replace_Dots    On
+        HTTP_User       fluentbit
+        HTTP_Passwd     secret
+        TLS             On
+        TLS.Verify      Off
 
 
   customParsers: |
@@ -141,11 +152,9 @@ luaScripts:
                     local value = line:sub(pos, next_pos - 1):match("|%s*([^|%s]*)%s*")
                     local action = actions[j]
                     if value == "MISSING" then
-                        missing[idx] = missing[idx] or {}
-                        table.insert(missing[idx], action)
+                        table.insert(missing, { index = idx, action = action })
                     elseif value == "ok" then
-                        available[idx] = available[idx] or {}
-                        table.insert(available[idx], action)
+                        table.insert(available, { index = idx, action = action })
                     end
                 end
             end
