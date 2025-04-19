@@ -24,6 +24,8 @@ spec:
     drainDataNodes: true
     additionalConfig:
       path.logs: /usr/share/opensearch/logs/
+      plugins.security.audit.type: log4j
+      plugins.security.unsupported.restapi.allow_securityconfig_modification: "true"
     additionalVolumes:
       - name: log4j2-config
         path: /usr/share/opensearch/config/log4j2.properties
