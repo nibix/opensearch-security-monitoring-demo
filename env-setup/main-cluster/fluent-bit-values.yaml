@@ -11,7 +11,7 @@ config:
   inputs: |
     [INPUT]
         Name              tail
-        Tag               opensearch.*
+        Tag               opensearch.logs.*
         Path              /var/log/pods/default_main-cluster-*/opensearch/*.log
         multiline.parser  docker
         Read_from_Head    true
@@ -39,23 +39,32 @@ config:
   filters: |
     [FILTER]
         name   multiline
-        match  opensearch.*
+        match  opensearch.logs.*
         multiline.key_content log
         multiline.parser opensearch_multiline    
     [FILTER]
         Name   parser
-        Match  opensearch.*
+        Match  opensearch.logs.*
         Key_Name log
         Parser opensearch_std_log
         Preserve_Key True
         Reserve_Data True    
     [FILTER]
         Name   parser
-        Match  opensearch.*
+        Match  opensearch.logs.*
         Key_Name message
         Parser opensearch_missing_index_privs
         Preserve_Key True
         Reserve_Data True
+    [FILTER]
+        name   rewrite_tag
+        match  opensearch.logs.*
+        rule   message ^Index\s+to\s+privilege\s+matrix:  opensearch.index_privilege_matrix false
+    [FILTER]
+        Name    lua
+        Match   opensearch.index_privilege_matrix
+        script  /fluent-bit/scripts/privilege-matrix-filter.lua
+        call    parse_privilege_matrix_by_index_and_action
 
   # Index logs directly to OpenSearch
   # Docs: https://docs.fluentbit.io/manual/pipeline/outputs
@@ -72,12 +81,7 @@ config:
         HTTP_Passwd     secret
         TLS             On
         TLS.Verify      Off
-#    [OUTPUT]
-#        Name   stdout
-#        Match  opensearch.*
-#        Format json
 
-#  parsers: |
 
 
   customParsers: |
@@ -90,7 +94,7 @@ config:
     [PARSER]
         Name        opensearch_std_log
         Format      regex
-        Regex       ^\[(?<timestamp>[^]]+)\]\[(?<level>[A-Z]+)\s*\]\[(?<class>[^\]]+)\]\s\[(?<node>[^\]]+)\]\[(?<user>[^\]]+)\]\s(?<message>.*)
+        Regex       ^\[(?<timestamp>[^]]+)\]\[(?<level>[A-Z]+)\s*\]\[(?<class>[^\]]+)\]\s\[(?<node>[^\]]+)\]\[(?<user>[^\]]+)\]\s(?<message>[\S\s]*)
         Time_Key    timestamp
         Time_Format %Y-%m-%dT%H:%M:%S,%L
     [PARSER]
@@ -99,11 +103,62 @@ config:
         Regex       ^No (?<privtype>[a-z]+)-level perm match for User \[name=(?<user>[^\],]+),.*?allIndices=\[(?<allIndices>[^\]]*)\].*?Action \[(?<action>[^\]]+)\].*$
 
 
-#daemonSetVolumeMounts:
-#  - name: varlog
-#    mountPath: /var/log/
+luaScripts:
+  privilege-matrix-filter.lua: |
+    function trim(s)
+        return (s:gsub("^%s*(.-)%s*$", "%1"))
+    end
+    
+    function parse_privilege_matrix_by_index_and_action(tag, timestamp, record)
+        local raw = record["log"]
+        local actions = {}
+        local action_positions = {}
+        local missing = {}
+        local available = {}
+    
+        local lines = {}
+        for line in raw:gmatch("[^\r\n]+") do
+            table.insert(lines, line)
+        end
+    
+        if #lines < 2 then
+            return 0, timestamp, record  -- Not enough lines to process
+        end
+    
+        local header = lines[2]
+        for pos, action in header:gmatch("()|%s*([^|]+)%s*") do
+            local cleaned = trim(action)
+            table.insert(actions, cleaned)
+            table.insert(action_positions, pos)
+        end
+    
+        for i = 3, #lines do
+            local line = lines[i]
+            local idx = line:match("^%s*(.-)%s*|")
+            if idx then
+                for j, pos in ipairs(action_positions) do
+                    local next_pos = action_positions[j + 1] or #line + 1
+                    local value = line:sub(pos, next_pos - 1):match("|%s*([^|%s]*)%s*")
+                    local action = actions[j]
+                    if value == "MISSING" then
+                        missing[idx] = missing[idx] or {}
+                        table.insert(missing[idx], action)
+                    elseif value == "ok" then
+                        available[idx] = available[idx] or {}
+                        table.insert(available[idx], action)
+                    end
+                end
+            end
+        end
+    
+        record["missing_privileges"] = missing
+        record["available_privileges"] = available
+        return 1, timestamp, record
+    end
+      
+
+# Notes:
 #
-#daemonSetVolumes:
-#  - name: varlog
-#    hostPath:
-#      path: /var/log/
+# - The [\S\s]* in (?<message>[\S\s]*) allows to match multi line messages (like stack traces)
+# - Be sure to change the tag name in rewrite_tag in such a way that earlier filters do not match it. Otherwise, we will get an infinite loop.
+# - luaScripts must be at the top level, not below config
