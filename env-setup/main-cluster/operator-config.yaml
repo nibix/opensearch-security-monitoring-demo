@@ -15,7 +15,6 @@ spec:
         generate: true
       transport:
         generate: true
-        perNode: true
   general:
     httpPort: 9200
     serviceName: main-cluster
@@ -26,6 +25,11 @@ spec:
       path.logs: /usr/share/opensearch/logs/
       plugins.security.audit.type: log4j
       plugins.security.unsupported.restapi.allow_securityconfig_modification: "true"
+      plugins.security.allow_default_init_securityindex: "true"
+      plugins.security.allow_unsafe_democertificates: "true"
+      plugins.security.ssl.transport.enforce_hostname_verification: "false"
+      plugins.security.nodes_dn: "[\"*\"]"
+      plugins.security.ssl.transport.enabled: "true"
     additionalVolumes:
       - name: log4j2-config
         path: /usr/share/opensearch/config/log4j2.properties
