@@ -64,7 +64,7 @@ config:
         Name    lua
         Match   opensearch.index_privilege_matrix
         script  /fluent-bit/scripts/privilege-matrix-filter.lua
-        call    parse_privilege_matrix_by_index_and_action
+        call    parse_privilege_matrix
 
   # Index logs directly to OpenSearch
   # Docs: https://docs.fluentbit.io/manual/pipeline/outputs
@@ -95,6 +95,15 @@ config:
         TLS.Verify      Off
 
 
+#    [OUTPUT]
+#        Name            http
+#        Match           opensearch.index_privilege_matrix*
+#        Host            host.docker.internal
+#        Port            2021
+#        Format          json
+#        URI             /log/ingest
+
+
   customParsers: |
     [MULTILINE_PARSER]
         Name         opensearch_multiline
@@ -116,54 +125,68 @@ config:
 
 luaScripts:
   privilege-matrix-filter.lua: |
-    function trim(s)
-        return (s:gsub("^%s*(.-)%s*$", "%1"))
-    end
-    
-    function parse_privilege_matrix_by_index_and_action(tag, timestamp, record)
-        local raw = record["log"]
-        local actions = {}
-        local action_positions = {}
-        local missing = {}
-        local available = {}
-    
-        local lines = {}
-        for line in raw:gmatch("[^\r\n]+") do
-            table.insert(lines, line)
-        end
-    
-        if #lines < 2 then
-            return 0, timestamp, record  -- Not enough lines to process
-        end
-    
-        local header = lines[2]
-        for pos, action in header:gmatch("()|%s*([^|]+)%s*") do
-            local cleaned = trim(action)
-            table.insert(actions, cleaned)
-            table.insert(action_positions, pos)
-        end
-    
-        for i = 3, #lines do
-            local line = lines[i]
-            local idx = line:match("^%s*(.-)%s*|")
-            if idx then
-                for j, pos in ipairs(action_positions) do
-                    local next_pos = action_positions[j + 1] or #line + 1
-                    local value = line:sub(pos, next_pos - 1):match("|%s*([^|%s]*)%s*")
-                    local action = actions[j]
-                    if value == "MISSING" then
-                        table.insert(missing, { index = idx, action = action })
-                    elseif value == "ok" then
-                        table.insert(available, { index = idx, action = action })
-                    end
-                end
-            end
-        end
-    
-        record["missing_privileges"] = missing
-        record["available_privileges"] = available
-        return 1, timestamp, record
-    end
+      function trim(s)
+          return (s:gsub("^%s*(.-)%s*$", "%1"))
+      end
+      
+      function parse_privilege_matrix(tag, timestamp, record)
+          local raw = record["log"]
+          local actions = {}
+          local action_positions = {}
+          local missing_by_action = {}
+      
+          -- Step 1: Split into lines
+          local lines = {}
+          for line in raw:gmatch("[^\r\n]+") do
+              table.insert(lines, line)
+          end
+      
+          if #lines < 2 then
+              return 0, timestamp, record  -- Not enough lines to process
+          end
+      
+          -- Step 2: Parse header line to extract action names and positions
+          local header = lines[2]
+          for pos, action in header:gmatch("()|%s*([^|]+)%s*") do
+              local cleaned = trim(action)
+              table.insert(actions, cleaned)
+              table.insert(action_positions, pos)
+              missing_by_action[cleaned] = {}
+          end
+      
+          -- Step 3: Parse each data line using column positions
+          for i = 3, #lines do
+              local line = lines[i]
+              local idx = line:match("^%s*(.-)%s*|")
+              if idx then
+                  for j, pos in ipairs(action_positions) do
+                      local next_pos = action_positions[j + 1] or #line + 1
+                      local value = line:sub(pos, next_pos - 1):match("|%s*([^|%s]*)%s*")
+                      local action = actions[j]
+                      if value == "MISSING" then
+                          table.insert(missing_by_action[action], idx)
+                      end
+                  end
+              end
+          end
+      
+          -- Emit a new record per action with missing privileges
+          local new_records = {}
+          for action, indices in pairs(missing_by_action) do
+              if #indices > 0 then
+                  local new_record = {
+                      missing_privilege = action,
+                      indices = indices,
+                      log = record["log"],
+                      user = record["user"]
+                  }
+                  table.insert(new_records, new_record)
+              end
+          end
+      
+          return 2, timestamp, new_records
+      end
+
       
 
 # Notes:
