@@ -10,7 +10,7 @@ For the demo environment, we want to have two OpenSearch clusters:
 We use:
 
 - minikube for providing a K8s cluster
-- OpenSearch K8s operator
+- OpenSearch helm charts
 - fluentbit for reading logfiles and for making logs available to DataPrepper (TODO)
 - maybe: DataPrepper
 
@@ -35,14 +35,23 @@ setup we are going to create. The `set memory 16384` command gives it 16GB.*
 minikube start
 ```
 
-3. Setup K8s operator for OpenSearch
+3. Setup helm charts for OpenSearch
 
 ```bash
-helm repo add opensearch-operator https://opensearch-project.github.io/opensearch-k8s-operator/
-helm install opensearch-operator opensearch-operator/opensearch-operator
+helm repo add opensearch https://opensearch-project.github.io/helm-charts/
 ```
 
-4. Install secrets for main OpenSearch cluster
+4. Generate TLS certs
+
+*(already done with SG tlstool, see certs directory)*
+
+5. Install TLS certs as secrets
+
+```bash
+kubectl create secret generic opensearch-certificates --from-file=main-cluster/certs/ 
+```
+
+6. Install secrets for main OpenSearch cluster
 
 ```bash
 kubectl apply -f main-cluster/admin-credentials-secret.yaml
@@ -50,20 +59,12 @@ kubectl apply -f main-cluster/dashboards-credentials-secret.yaml
 kubectl apply -f main-cluster/security-config-secret.yaml
 ```
 
-*The secrets are used in `operator-config.yaml`. Thus, they need to be installed first.*
+*The secrets are used in `opensearch-helm-values.yaml`. Thus, they need to be installed first.*
 
-5. Install additional config files for the main OpenSearch cluster
-
-```bash
-kubectl apply -f main-cluster/log4j2-config.yaml
-```
-
-*The config file is used in `operator-config.yaml`. Thus, they need to be installed first.*
-
-6. Install main OpenSearch cluster
+7. Install main OpenSearch cluster
 
 ```bash
-kubectl apply -f main-cluster/operator-config.yaml
+helm install --values=main-cluster/opensearch-helm-values.yaml main-cluster opensearch/opensearch
 ```
 
 *This starts the cluster.*
@@ -161,7 +162,7 @@ kubectl debug node/minikube -it --image=busybox --share-processes -- chroot /hos
 ### Delete main cluster
 
 ```
-kubectl delete opensearchcluster main-cluster
+helm delete main-cluster
 ```
 
 ### Stop fluentbit

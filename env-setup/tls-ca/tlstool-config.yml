@@ -1,0 +1,127 @@
+# Configuration for https://docs.search-guard.com/latest/offline-tls-tool
+###
+### Self-generated certificate authority
+### 
+# 
+# If you want to create a new certificate authority, you must specify its parameters here. 
+# You can skip this section if you only want to create CSRs
+#
+ca:
+   root:
+      # The distinguished name of this CA. You must specify a distinguished name.   
+      dn: CN=root.ca.example.com,OU=CA,O=demo,DC=example,DC=com
+
+      # The size of the generated key in bits
+      keysize: 2048
+
+      # The validity of the generated certificate in days from now
+      validityDays: 3650
+      
+      # Password for private key
+      #   Possible values: 
+      #   - auto: automatically generated password, returned in config output; 
+      #   - none: unencrypted private key; 
+      #   - other values: other values are used directly as password   
+      pkPassword: secret
+      
+      # The name of the generated files can be changed here
+      file: root-ca.pem
+
+### 
+### Default values and global settings
+###
+defaults:
+
+      # The validity of the generated certificate in days from now
+      validityDays: 3650 
+      
+      # Password for private key
+      #   Possible values: 
+      #   - auto: automatically generated password, returned in config output; 
+      #   - none: unencrypted private key; 
+      #   - other values: other values are used directly as password   
+      pkPassword: secret
+      
+      # Specifies to recognize legitimate nodes by the distinguished names
+      # of the certificates. This can be a list of DNs, which can contain wildcards.
+      # Furthermore, it is possible to specify regular expressions by
+      # enclosing the DN in //. 
+      # Specification of this is optional. The tool will always include
+      # the DNs of the nodes specified in the nodes section.            
+      #nodesDn:
+      #- "CN=*.example.com,OU=Ops,O=Example Com\\, Inc.,DC=example,DC=com"
+      # - 'CN=node.other.com,OU=SSL,O=Test,L=Test,C=DE'
+      # - 'CN=*.example.com,OU=SSL,O=Test,L=Test,C=DE'
+      # - 'CN=elk-devcluster*'
+      # - '/CN=.*regex/' 
+
+      # If you want to use OIDs to mark legitimate node certificates, 
+      # the OID can be included in the certificates by specifying the following
+      # attribute
+      
+      # nodeOid: "1.2.3.4.5.5"
+
+      # The length of auto generated passwords            
+      generatedPasswordLength: 12
+      
+      # Set this to true in order to generate config and certificates for 
+      # the HTTP interface of nodes
+      httpsEnabled: true
+      
+      # Set this to true in order to re-use the node transport certificates
+      # for the HTTP interfaces. Only recognized if httpsEnabled is true
+      
+      reuseTransportCertificatesForHttp: true
+      
+      # Set this to true to enable hostname verification
+      #verifyHostnames: false
+      
+      # Set this to true to resolve hostnames
+      #resolveHostnames: false
+      
+      
+###
+### Nodes
+###
+#
+# Specify the nodes of your ES cluster here
+#      
+nodes:
+  - name: main-cluster-node
+    dn: CN=main-cluster-node.example.com,OU=Ops,O=demo,DC=example,DC=com
+    dns:
+      - main-cluster-node1.default.svc
+      - main-cluster-node2.default.svc
+      - main-cluster-node3.default.svc
+      - main-cluster.default.svc
+  - name: monitoring-cluster-node
+    dn: CN=monitoring-cluster-node.example.com,OU=Ops,O=demo,DC=example,DC=com
+    dns:
+      - monitoring-cluster-node1.monitoring.svc
+      - monitoring-cluster-node2.monitoring.svc
+      - monitoring-cluster-node3.monitoring.svc
+      - monitoring-cluster.monitoring.svc
+  - name: main-cluster-dashboards
+    dn: CN=main-cluster-dashboards.example.com,OU=Ops,O=demo,DC=example,DC=com
+    dns:
+      - main-cluster-dashboards.default.svc
+  - name: monitoring-cluster-dashboards
+    dn: CN=monitoring-cluster-dashboards.example.com,OU=Ops,O=demo,DC=example,DC=com
+    dns:
+      - monitoring-cluster-dashboards.monitoring.svc
+
+
+###
+### Clients
+###
+#
+# Specify the clients that shall access your ES cluster with certificate authentication here
+#
+# At least one client must be an admin user (i.e., a super-user). Admin users can
+# be specified with the attribute admin: true    
+#        
+clients:
+  - name: admin
+    dn: CN=admin.example.com,OU=Ops,O=demo,DC=example,DC=com
+    admin: true
+ 

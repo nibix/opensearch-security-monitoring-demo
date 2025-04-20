@@ -1,0 +1,25 @@
+# This is a configuration snippet for the node main-cluster-dashboards
+# This snippet needs to be inserted into the file config/elasticsearch.yml of the respective node.
+# If the config file already contains SearchGuard configuration, this needs to be replaced.
+# Furthermore, you need to copy the files referenced below into the same directory.
+# Please refer to http://docs.search-guard.com/latest/configuring-tls for further configuration of your installation.
+
+
+searchguard.ssl.transport.pemcert_filepath: main-cluster-dashboards.pem
+searchguard.ssl.transport.pemkey_filepath: main-cluster-dashboards.key
+searchguard.ssl.transport.pemkey_password: secret
+searchguard.ssl.transport.pemtrustedcas_filepath: root-ca.pem
+searchguard.ssl.transport.enforce_hostname_verification: false
+searchguard.ssl.transport.resolve_hostname: false
+searchguard.ssl.http.enabled: true
+searchguard.ssl.http.pemcert_filepath: main-cluster-dashboards.pem
+searchguard.ssl.http.pemkey_filepath: main-cluster-dashboards.key
+searchguard.ssl.http.pemkey_password: secret
+searchguard.ssl.http.pemtrustedcas_filepath: root-ca.pem
+searchguard.nodes_dn:
+- "CN=main-cluster-node.example.com,OU=Ops,O=demo,DC=example,DC=com"
+- "CN=monitoring-cluster-node.example.com,OU=Ops,O=demo,DC=example,DC=com"
+- "CN=main-cluster-dashboards.example.com,OU=Ops,O=demo,DC=example,DC=com"
+- "CN=monitoring-cluster-dashboards.example.com,OU=Ops,O=demo,DC=example,DC=com"
+searchguard.authcz.admin_dn:
+- "CN=admin.example.com,OU=Ops,O=demo,DC=example,DC=com"
