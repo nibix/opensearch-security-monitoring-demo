@@ -1,4 +1,4 @@
-opensearchHosts: "https://main-cluster-master:9200"
+opensearchHosts: "https://monitoring-cluster-master:9200"
 replicaCount: 1
 
 image:
@@ -16,11 +16,11 @@ config:
       host: "0.0.0.0"
       ssl:
         enabled: true
-        certificate: /usr/share/opensearch-dashboards/certs/main-cluster-dashboards.pem
-        key: /usr/share/opensearch-dashboards/certs/main-cluster-dashboards.key.pem
+        certificate: /usr/share/opensearch-dashboards/certs/monitoring-cluster-dashboards.pem
+        key: /usr/share/opensearch-dashboards/certs/monitoring-cluster-dashboards.key.pem
         keyPassphrase: "secret"
     opensearch:
-      hosts: "https://main-cluster-master:9200"
+      hosts: "https://monitoring-cluster-master:9200"
       username: "dashboards_server"
       password: "secret"
       ssl:

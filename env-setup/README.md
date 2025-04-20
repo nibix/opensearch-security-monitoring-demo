@@ -54,8 +54,6 @@ kubectl create secret generic opensearch-certificates --from-file=main-cluster/c
 6. Install secrets for main OpenSearch cluster
 
 ```bash
-kubectl apply -f main-cluster/admin-credentials-secret.yaml
-kubectl apply -f main-cluster/dashboards-credentials-secret.yaml
 kubectl apply -f main-cluster/security-config-secret.yaml
 ```
 
@@ -69,28 +67,36 @@ helm install --values=main-cluster/opensearch-helm-values.yaml main-cluster open
 
 *This starts the cluster.*
 
-7. Review the progress of the startup sequence
+8. Review the progress of the startup sequence
 
 *Starting up the cluster takes a while. You can review the created nodes/pods by executing the following command:*
 
 ```bash
 kubectl get pods
 ```
-*The startup is not finished until you see the three pods `main-cluster-masters-0`, `main-cluster-masters-1`, `main-cluster-masters-2`.
 
 *You can review the logs of pods by taking a pod name from `kubectl get pods` and executing:*
 
 ```bash
 kubectl logs <pod name>
 ```
-
-
-8. Make Dashboards available locally
+9. Install OpenSearch Dashboards for main cluster
 
 ```bash
-kubectl port-forward svc/main-cluster-dashboards 5601 
+helm install --values=main-cluster/opensearch-dashboards-helm-values.yaml main-cluster-dashboards opensearch/opensearch-dashboards
 ```
 
+*If you have installed it before, use the following instead:*
+
+```bash
+helm upgrade --install --values=main-cluster/opensearch-dashboards-helm-values.yaml main-cluster-dashboards opensearch/opensearch-dashboards
+```
+
+10. Make Dashboards available locally
+
+```bash
+kubectl port-forward svc/main-cluster-dashboards-opensearch-dashboards 5601 
+```
 
 9. Create namespace for monitoring OpenSearch cluster
 
@@ -101,23 +107,38 @@ kubectl create namespace monitoring
 *We run the monitoring cluster in a separate namespace. This helps to keep
 the different configurations apart.*
 
+10. Install TLS certs as secrets
+
+```bash
+kubectl create secret generic opensearch-certificates --from-file=monitoring-cluster/certs/ --namespace=monitoring 
+```
 
 10. Install secrets for monitoring OpenSearch cluster
 
 ```bash
-kubectl apply -f monitoring-cluster/admin-credentials-secret.yaml
-kubectl apply -f monitoring-cluster/dashboards-credentials-secret.yaml
 kubectl apply -f monitoring-cluster/security-config-secret.yaml
 ```
 11. Install monitoring OpenSearch cluster
 
 ```bash
-kubectl apply -f monitoring-cluster/operator-config.yaml
+helm install --values=monitoring-cluster/opensearch-helm-values.yaml --namespace=monitoring monitoring-cluster opensearch/opensearch
+```
+
+12. Install OpenSearch Dashboards for monitoring cluster
+
+```bash
+helm install --values=monitoring-cluster/opensearch-dashboards-helm-values.yaml --namespace=monitoring monitoring-cluster-dashboards opensearch/opensearch-dashboards 
+```
+
+*If you have installed it before, use the following instead:*
+
+```bash
+helm upgrade --install --values=main-cluster/opensearch-dashboards-helm-values.yaml main-cluster-dashboards opensearch/opensearch-dashboards
 ```
 
 12. Make Dashboards available locally
 ```bash
-kubectl port-forward svc/monitoring-cluster-dashboards 5601 --namespace=monitoring
+kubectl port-forward svc/monitoring-cluster-dashboards-opensearch-dashboards 5602:5601  --namespace=monitoring
 ```
 
 13. Setup Fluent Bit
