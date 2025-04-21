@@ -175,8 +175,8 @@ luaScripts:
           for action, indices in pairs(missing_by_action) do
               if #indices > 0 then
                   local new_record = {
-                      missing_privilege = action,
-                      indices = indices,
+                      action = action,
+                      index = indices,
                       log = record["log"],
                       user = record["user"]
                   }

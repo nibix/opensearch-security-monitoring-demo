@@ -198,6 +198,37 @@ helm uninstall fluent-bit
 helm template fluent-bit fluent/fluent-bit -f main-cluster/fluent-bit-values.yaml
 ```
 
+### Update the security config on the main cluster
+
+1. Update the secret
+
+```bash
+kubectl apply -f main-cluster/security-config-secret.yaml
+```
+
+2. Refresh helm deployment
+
+```bash
+helm upgrade --install --values=main-cluster/opensearch-helm-values.yaml main-cluster opensearch/opensearch
+```
+
+*(I do not really understand why this is necessary)*
+
+3. Execute securityadmin
+
+```bash
+kubectl exec -it main-cluster-master-0 -- /usr/share/opensearch/plugins/opensearch-security/tools/securityadmin.sh \
+  -cd /usr/share/opensearch/config/opensearch-security/ \
+  -icl \
+  -nhnv \
+  -cacert /usr/share/opensearch/config/certs/root-ca.pem \
+  -cert /usr/share/opensearch/config/certs/admin.pem \
+  -key /usr/share/opensearch/config/certs/admin.key.pem \
+  -keypass secret
+```
+
+*Note: This is still buggy. I apparently need to execute the commands twice in a row to pick up changes?*
+
 ## Resources
 
 - Deploying OpenSearch using the K8s operator: https://opensearch.org/docs/latest/tools/k8s-operator/
