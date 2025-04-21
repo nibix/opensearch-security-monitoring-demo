@@ -23,19 +23,30 @@ spec:
     drainDataNodes: true
     additionalConfig:
       path.logs: /usr/share/opensearch/logs/
-      plugins.security.audit.type: log4j
       plugins.security.unsupported.restapi.allow_securityconfig_modification: "true"
       plugins.security.allow_default_init_securityindex: "true"
       plugins.security.allow_unsafe_democertificates: "true"
       plugins.security.ssl.transport.enforce_hostname_verification: "false"
       plugins.security.nodes_dn: "[\"*\"]"
       plugins.security.ssl.transport.enabled: "true"
+      plugins.security.audit.type: "external_opensearch"
+      plugins.security.audit.config.http_endpoints: "https://monitoring-cluster.monitoring.svc.cluster.local:9200"
+      plugins.security.audit.config.username: "admin"
+      plugins.security.audit.config.password: "secret"
+      plugins.security.audit.config.index: "security-auditlog"
+      plugins.security.audit.config.type: "_doc"
+      plugins.security.audit.config.enable_ssl: "true"
+      plugins.security.audit.config.pemtrustedcas_filepath: "/usr/share/opensearch/config/audit-ca/ca.crt"
     additionalVolumes:
       - name: log4j2-config
         path: /usr/share/opensearch/config/log4j2.properties
         subPath: log4j2.properties
         configMap:
           name: log4j2-config
+      - name: audit-ca # kubectl -n default create secret generic audit-ca-secret --from-file=ca.crt=main-cluster/ca.crt
+        path: /usr/share/opensearch/config/audit-ca
+        secret:
+          secretName: audit-ca-secret
   dashboards:
     tls:
       enable: true
