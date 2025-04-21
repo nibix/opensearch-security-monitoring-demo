@@ -72,7 +72,7 @@ config:
     [OUTPUT]
         Name            opensearch
         Match           opensearch.logs.*
-        Host            monitoring-cluster.monitoring.svc
+        Host            monitoring-cluster-master.monitoring.svc
         Port            9200
         Index           opensearch-logs
         Suppress_Type_Name On
@@ -84,7 +84,7 @@ config:
     [OUTPUT]
         Name            opensearch
         Match           opensearch.index_privilege_matrix*
-        Host            monitoring-cluster.monitoring.svc
+        Host            monitoring-cluster-master.monitoring.svc
         Port            9200
         Index           opensearch-missing-index-privileges-logs
         Suppress_Type_Name On
@@ -114,7 +114,7 @@ config:
     [PARSER]
         Name        opensearch_std_log
         Format      regex
-        Regex       ^\[(?<timestamp>[^]]+)\]\[(?<level>[A-Z]+)\s*\]\[(?<class>[^\]]+)\]\s\[(?<node>[^\]]+)\]\[(?<user>[^\]]+)\]\s(?<message>[\S\s]*)
+        Regex       ^\[(?<timestamp>[^]]+)\]\[(?<level>[A-Z]+)\s*\]\[(?<class>[^\]]+)\]\s\[(?<node>[^\]]+)\]\[(?<user>[^\]]*)\]\s(?<message>[\S\s]*)
         Time_Key    timestamp
         Time_Format %Y-%m-%dT%H:%M:%S,%L
     [PARSER]

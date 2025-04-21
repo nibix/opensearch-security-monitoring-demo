@@ -1,0 +1,42 @@
+clusterName: monitoring-cluster
+masterService: monitoring-cluster-master
+image:
+  tag: "2.19.1"
+
+config:
+  opensearch.yml: |
+    cluster.name: monitoring-cluster    
+    network.host: 0.0.0.0
+    plugins.security.ssl.transport.pemcert_filepath: /usr/share/opensearch/config/certs/monitoring-cluster-node.pem
+    plugins.security.ssl.transport.pemkey_filepath: /usr/share/opensearch/config/certs/monitoring-cluster-node.key.pem
+    plugins.security.ssl.transport.pemkey_password: secret
+    plugins.security.ssl.transport.pemtrustedcas_filepath: /usr/share/opensearch/config/certs/root-ca.pem
+    plugins.security.ssl.transport.enforce_hostname_verification: false
+    plugins.security.ssl.http.enabled: true
+    plugins.security.ssl.http.pemcert_filepath: /usr/share/opensearch/config/certs/monitoring-cluster-node.pem
+    plugins.security.ssl.http.pemkey_filepath: /usr/share/opensearch/config/certs/monitoring-cluster-node.key.pem
+    plugins.security.ssl.http.pemkey_password: secret
+    plugins.security.ssl.http.pemtrustedcas_filepath: /usr/share/opensearch/config/certs/root-ca.pem
+    plugins.security.nodes_dn:
+    - "CN=monitoring-cluster-node.example.com,OU=Ops,O=demo,DC=example,DC=com"
+    plugins.security.authcz.admin_dn: 
+    - CN=admin.example.com,OU=Ops,O=demo,DC=example,DC=com
+    plugins.security.allow_default_init_securityindex: true
+
+secretMounts:
+  - name: opensearch-certificates
+    secretName: opensearch-certificates
+    path: /usr/share/opensearch/config/certs
+    readOnly: true
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+
+securityConfig:
+  config:
+    securityConfigSecret: security-config-secret
+
+persistence:
+  size: 1Gi
