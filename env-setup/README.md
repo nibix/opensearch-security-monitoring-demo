@@ -154,6 +154,12 @@ helm upgrade --install fluent-bit fluent/fluent-bit -f main-cluster/fluent-bit-v
 This uses the customized fluent-bit-values.yaml configuration.
 
 
+14. Deploy DataPrepper
+
+```bash
+kubectl apply -f monitoring-cluster/data-prepper-k8s-config.yaml
+```
+
 ## Useful commands
 
 ### Logs of a pod
@@ -228,6 +234,34 @@ kubectl exec -it main-cluster-master-0 -- /usr/share/opensearch/plugins/opensear
 ```
 
 *Note: This is still buggy. I apparently need to execute the commands twice in a row to pick up changes?*
+
+
+### Update the security config on the monitoring cluster
+
+1. Update the secret
+
+```bash
+kubectl apply -f monitoring-cluster/security-config-secret.yaml
+```
+
+2. Refresh helm deployment
+
+```bash
+helm upgrade --install --values=monitoring-cluster/opensearch-helm-values.yaml  --namespace=monitoring monitoring-cluster opensearch/opensearch
+```
+
+3. Execute securityadmin
+
+```bash
+kubectl --namespace=monitoring exec -it monitoring-cluster-master-0 -- /usr/share/opensearch/plugins/opensearch-security/tools/securityadmin.sh \
+  -cd /usr/share/opensearch/config/opensearch-security/ \
+  -icl \
+  -nhnv \
+  -cacert /usr/share/opensearch/config/certs/root-ca.pem \
+  -cert /usr/share/opensearch/config/certs/admin.pem \
+  -key /usr/share/opensearch/config/certs/admin.key.pem \
+  -keypass secret
+```
 
 ## Resources
 

@@ -8,46 +8,23 @@ metadata:
   namespace: monitoring
 data:
   pipelines.yaml: |
-    entry-pipeline:
-      delay: "100"
-      source:
-        otel_trace_source:
-          ssl: false
-      sink:
-        - pipeline:
-            name: "raw-pipeline"
-        - pipeline:
-            name: "service-map-pipeline"
-    raw-pipeline:
-      source:
-        pipeline:
-          name: "entry-pipeline"
-      processor:
-        - otel_trace_raw:
-      sink:
-        - stdout:
-    service-map-pipeline:
-      delay: "100"
-      source:
-        pipeline:
-          name: "entry-pipeline"
-      processor:
-        - service_map_stateful:
     log-pipeline:
       source:
         http:
           ssl: false
-      processor:
-        - grok:
-            match:
-              log: [ "%{COMMONAPACHELOG}" ]
+          authentication:
+            unauthenticated:
+          # We will listen for logs on port 2021
+          port: 2021
+          path: /log/ingest
       sink:
-        - opensearch:
-            hosts: [ "https://monitoring-cluster.monitoring.svc:9200" ]
+      - stdout: {}
+      - opensearch:
+            hosts: [ "https://monitoring-cluster-master:9200" ]
             insecure: true
             username: dataprepper
             password: secret
-            index: opensearch-missing-index-privileges
+            index: opensearch-audit-logs
   data-prepper-config.yaml: |
     ssl: false
 #    authentication:
@@ -65,9 +42,9 @@ metadata:
 spec:
   clusterIP: None
   ports:
-    - name: "21890"
-      port: 21890
-      targetPort: 21890
+    - name: "2021"
+      port: 2021
+      targetPort: 2021
   selector:
     app: data-prepper
 status:
@@ -111,10 +88,10 @@ spec:
         app: data-prepper
     spec:
       containers:
-        - image: opensearchproject/data-prepper:2
+        - image: opensearchproject/data-prepper:2.10.3
           name: data-prepper
           ports:
-            - containerPort: 21890
+            - containerPort: 2021
           resources: {}
           volumeMounts:
             - name: prepper-configmap-config
