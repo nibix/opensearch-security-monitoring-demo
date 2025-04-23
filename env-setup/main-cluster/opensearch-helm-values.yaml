@@ -23,10 +23,9 @@ config:
     - CN=admin.example.com,OU=Ops,O=demo,DC=example,DC=com
     plugins.security.allow_default_init_securityindex: true
     plugins.security.restapi.roles_enabled: ["all_access"]
-    plugins.security.audit.type: webhook
-    plugins.security.audit.config.webhook.url: http://data-prepper-http.monitoring.svc:2021/log/ingest
-    plugins.security.audit.config.webhook.ssl.verify: false
-    plugins.security.audit.config.webhook.format: json
+    plugins.security.audit.type: log4j
+    plugins.security.audit.config.log4j.logger_name: auditlog
+    plugins.security.audit.config.log4j.level: INFO
   log4j2.properties: |
     status = error
     appender.console.type = Console

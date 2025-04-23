@@ -11,7 +11,7 @@ config:
   inputs: |
     [INPUT]
         Name              tail
-        Tag               opensearch.logs.*
+        Tag               opensearch.logs.std.*
         Path              /var/log/pods/default_main-cluster-*/opensearch/*.log
         multiline.parser  docker
         Read_from_Head    true
@@ -39,48 +39,71 @@ config:
   filters: |
     [FILTER]
         name   multiline
-        match  opensearch.logs.*
+        match  opensearch.logs.std.*
         multiline.key_content log
-        multiline.parser opensearch_multiline    
+        multiline.parser opensearch_multiline
+    [FILTER]
+        name   rewrite_tag
+        match  opensearch.logs.std.*
+        rule   log  ^\[([^]]+)\]\[([A-Z]+)\s*\]\[auditlog  opensearch.logs.audit false    
     [FILTER]
         Name   parser
-        Match  opensearch.logs.*
+        Match  opensearch.logs.std.*
         Key_Name log
         Parser opensearch_std_log
         Preserve_Key True
-        Reserve_Data True    
+        Reserve_Data True
+    [FILTER]
+        Name record_modifier
+        Match opensearch.logs.std.*
+        Record log_type std
     [FILTER]
         Name   parser
-        Match  opensearch.logs.*
+        Match  opensearch.logs.std.*
         Key_Name message
         Parser opensearch_missing_index_privs
         Preserve_Key True
         Reserve_Data True
     [FILTER]
         name   rewrite_tag
-        match  opensearch.logs.*
+        match  opensearch.logs.std.*
         rule   message ^Index\s+to\s+privilege\s+matrix:  opensearch.index_privilege_matrix false
     [FILTER]
         Name    lua
         Match   opensearch.index_privilege_matrix
         script  /fluent-bit/scripts/privilege-matrix-filter.lua
         call    parse_privilege_matrix
+    [FILTER]
+        Name     parser
+        Match    opensearch.logs.audit
+        Key_Name log
+        Parser   auditlog_json_extractor
+        Preserve_Key Off
+    [FILTER]
+        Name     parser
+        Match    opensearch.logs.audit
+        Key_Name log
+        Parser   auditlog_json
+        Preserve_Key Off
+    [FILTER]
+        Name record_modifier
+        Match opensearch.logs.audit
+        Record log_type audit
 
   # Index logs directly to OpenSearch
   # Docs: https://docs.fluentbit.io/manual/pipeline/outputs
   outputs: |
     [OUTPUT]
-        Name            opensearch
-        Match           opensearch.logs.*
-        Host            monitoring-cluster-master.monitoring.svc
-        Port            9200
-        Index           opensearch-logs
-        Suppress_Type_Name On
-        Replace_Dots    On
-        HTTP_User       fluentbit
-        HTTP_Passwd     secret
-        TLS             On
-        TLS.Verify      Off
+        Name              http
+        Match             opensearch.logs.*
+        Host              data-prepper-headless.monitoring.svc
+        Port              2021
+        URI               /log/ingest
+        Format            json
+        json_date_key     @timestamp
+        json_date_format  iso8601
+        Retry_Limit       False
+        Header            Content-Type application/json
     [OUTPUT]
         Name            opensearch
         Match           opensearch.index_privilege_matrix*
@@ -94,14 +117,6 @@ config:
         TLS             On
         TLS.Verify      Off
 
-
-#    [OUTPUT]
-#        Name            http
-#        Match           opensearch.index_privilege_matrix*
-#        Host            host.docker.internal
-#        Port            2021
-#        Format          json
-#        URI             /log/ingest
 
 
   customParsers: |
@@ -121,7 +136,15 @@ config:
         Name        opensearch_missing_index_privs
         Format      regex
         Regex       ^No (?<privtype>[a-z]+)-level perm match for User \[name=(?<user>[^\],]+),.*?allIndices=\[(?<allIndices>[^\]]*)\].*?Action \[(?<action>[^\]]+)\].*$
-
+    [PARSER]
+        Name        auditlog_json_extractor
+        Format      regex
+        Regex       ^.*?(?<log>\{.*\})\s*$
+    [PARSER]
+        Name        auditlog_json
+        Format      json
+        Time_Key    @timestamp
+        Time_Format %Y-%m-%dT%H:%M:%S.%L%z
 
 luaScripts:
   privilege-matrix-filter.lua: |
