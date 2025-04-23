@@ -6,7 +6,7 @@ This directory contains visualizations and other applications of the ingested lo
 
 ### Privileges Dashboard
 
-![Screenshot of privileges dashboard](privileges-dashboard.png | width=200)
+![Screenshot of privileges dashboard](./privileges-dashboard.png)
 
 The privileges dashboard shows information about the privilege errors in a given time frame.
 
@@ -57,7 +57,7 @@ This document structure is realized by Fluentbit which uses a custom Lua script 
 
 ### Security Configuration Dashboard
 
-![Screenshot of security configuration dashboard](security-configuration-dashboard.png | width=200)
+![Screenshot of security configuration dashboard](security-configuration-dashboard.png)
 
 The purpose of the security configuration dashboard is to show errors caused by updates to the security configuration.
 
