@@ -8,48 +8,61 @@ metadata:
   namespace: monitoring
 data:
   pipelines.yaml: |
-    entry-pipeline:
-      delay: "100"
-      source:
-        otel_trace_source:
-          ssl: false
-      sink:
-        - pipeline:
-            name: "raw-pipeline"
-        - pipeline:
-            name: "service-map-pipeline"
-    raw-pipeline:
-      source:
-        pipeline:
-          name: "entry-pipeline"
-      processor:
-        - otel_trace_raw:
-      sink:
-        - stdout:
-    service-map-pipeline:
-      delay: "100"
-      source:
-        pipeline:
-          name: "entry-pipeline"
-      processor:
-        - service_map_stateful:
     log-pipeline:
       source:
         http:
           ssl: false
+          authentication:
+            unauthenticated:
+          # We will listen for logs on port 2021
+          port: 2021
+          path: /log/ingest
       processor:
-        - grok:
-            match:
-              log: [ "%{COMMONAPACHELOG}" ]
+      - log_event_time_correlation:
+          group_ref_key_prefix: config_change
+          start_key: audit_category
+          start_value: COMPLIANCE_INTERNAL_CONFIG_WRITE
+          timestamp_key: "@timestamp"    
       sink:
-        - opensearch:
-            hosts: [ "https://monitoring-cluster.monitoring.svc:9200" ]
+      - opensearch:
+            hosts: [ "https://monitoring-cluster-master:9200" ]
             insecure: true
             username: dataprepper
             password: secret
-            index: opensearch-missing-index-privileges
+            index: opensearch-logs
   data-prepper-config.yaml: |
     ssl: false
+  log4j2-rolling.properties: |
+    status = error
+    dest = err
+    name = PropertiesConfig    
+    property.filename = log/data-prepper/data-prepper.log
+    appender.console.type = Console
+    appender.console.name = STDOUT
+    appender.console.layout.type = PatternLayout
+    appender.console.layout.pattern = %d{ISO8601} [%t] %-5p %40C - %m%n    
+    appender.rolling.type = RollingFile
+    appender.rolling.name = RollingFile
+    appender.rolling.fileName = ${filename}
+    appender.rolling.filePattern = logs/data-prepper.log.%d{MM-dd-yy-HH}-%i.gz
+    appender.rolling.layout.type = PatternLayout
+    appender.rolling.layout.pattern = %d{ISO8601} [%t] %-5p %40C - %m%n
+    appender.rolling.policies.type = Policies
+    appender.rolling.policies.time.type = TimeBasedTriggeringPolicy
+    appender.rolling.policies.time.interval = 1
+    appender.rolling.policies.time.modulate = true
+    appender.rolling.policies.size.type = SizeBasedTriggeringPolicy
+    appender.rolling.policies.size.size=100MB
+    appender.rolling.strategy.type = DefaultRolloverStrategy
+    appender.rolling.strategy.max = 168
+    rootLogger.level = debug
+    rootLogger.appenderRef.stdout.ref = STDOUT
+    rootLogger.appenderRef.file.ref = RollingFile    
+    logger.dp.name = org.opensearch.dataprepper
+    logger.dp.level = debug
+
+binaryData:
+  data-prepper-config-error-agg-plugin.jar: "UEsDBBQAAAgIAJxml1oAAAAAAgAAAAAAAAAJAAAATUVUQS1JTkYvAwBQSwMEFAAACAgAY1KXWrJ/Au4bAAAAGQAAABQAAABNRVRBLUlORi9NQU5JRkVTVC5NRvNNzMtMSy0u0Q1LLSrOzM+zUjDUM+Dl4uUCAFBLAwQUAAAICABRY5daAAAAAAIAAAAAAAAABAAAAGNvbS8DAFBLAwQUAAAICABRY5daAAAAAAIAAAAAAAAADAAAAGNvbS9lbGlhdHJhLwMAUEsDBBQAAAgIAFFjl1oAAAAAAgAAAAAAAAAYAAAAY29tL2VsaWF0cmEvZGF0YXByZXBwZXIvAwBQSwMEFAAACAgAnGaXWgAAAAACAAAAAAAAAB8AAABjb20vZWxpYXRyYS9kYXRhcHJlcHBlci9wbHVnaW4vAwBQSwMEFAAACAgAnGaXWvV1RGyLCAAAyRUAADsAAABjb20vZWxpYXRyYS9kYXRhcHJlcHBlci9wbHVnaW4vTG9nRXZlbnRUaW1lQ29ycmVsYXRvci5jbGFzc71Y6XMcxRX/tbS7s1qND1aHWTsxBstYx0pr40PgNQZZkm3ZKyEkWw42IEaz7dVYo5nxzKyQyEUSEiAnSUgCSQg5IQdOSGILyySOc0FCUvmcPyBfUpVPqUoVRRHI657d1bVIll2xqjTd8+Zd/d6vX7/eN965eAlAO/4aQwUqFYRUhBFh2Gu7uZTtcMvjmquPprKarzkudxzupsbtLDdTjmvr3PNsN9Ux4vmupvv9RQpDZK9hGf4+hl2NmaU0cd81dC/Vb+ZzhtUbvKWbhsLvFv6qEEO1AlXFKqwmbbo9nuKmoZG9eYocqSCVsXPdE9zyjxrjvNN2XW5qvnCnOufaeafbynodPgM7LNSuVXED4uSqblunjBzDnZmr0t4pxdMKahlqTmsTWirvG2aqw3W1qYzh+dWoxzoFN6pIYD1D7SxLp22aXPcN22IIecYjnKGysaknhhq8T6Th/URu7GkaEhpuUrEJNzNEDZ+7waLqG5sys8p6CvR0NTajQcEWFbdiK0N8MQuDMqp5fXzSlwZPCIkmFc1oIYOWJNcWdZualUvdM3Ka/KQltjK0LQsMl+u2m00NyCGGJFIqtgndSo77XcSu4DaG5LJ6uIh1SkY8RvnaqWIXdjOsJS0iAwdce1x+ZNi+NMgWaks3HRYKb1dxB/YwqIY36Guuf7XKTlRhL+5UsE/FXbibIX0NMGJYJaHaladMSWDUBnnwiTlVpKZj2I9OBV0qunGgmON5LIQU3+41TNPwZJIl5A+p6MFhhjXSxtxFt61szWLFGRW96GO4QSob4KeO8Kl+l58yJsmhOeAZpE1t5dJxKjP9Ku7FAMO6cW2Mlm7pmn/c8Edp5vma5ZOntzYulmxaTIrhKI4pGFJxHB9gWD2L8WPHeroYYq5mZe3x4CU+b58ImpQ/oeIk7pdxCrQuRH3BVjW240EVw3iIAunkKVhbyzi5eLeIfTsCXUFWBcepeV6KukDatGyWoa6xjOyJOBj6RZgNFadFmFWRXgrTuENxVmDSRljohPDUUmHDId20Sxjal/a009Q8L11mp8fpMJDWPRW+sB7zBFiGNDPPBXlCxcOCHJVkciiGMUypeESsM8LP5DXTi+FD+LCCj6j4KB4lmMxitCdIN0PY0VyPql7rXDc7RzV3kFRwS+dF3+aKpYXij6v4hEC+6tvdjq2PSqQr+GSxBEtN3ZM6d8RmiOExPK7iCTxJ2HcoCj5hXx87SodWUHOHGP7ReE3lf+Wn3PI7rmA3EDtAB6ztTi0pxidp5nm0Ylp7cdo9QVmTJ4NYZqiTVFMUMobF+/LjI9w9qo2YXGxZW9fMIc01xHuBGPJHRf1ov7rQpBlu1HI5l+c0n5eag1Khc+aGg+G2lYewpKQQHOHp1UWVcMMXR4xq+TWEmyExkLcEdIcMz6B4dliW7cvqTMs9sryn2ix/Spyb/cHXwHNZNN28Hliqytrdk1zP+5S0tsZMuR4j3VSeTNuQB4dAFS/mkDZxcIozbFvez3kHPulTAgItsv69TJJ6L2+SzbWZ+VUxLYTmIXHKKaLxoRW6sndlh9o+sj1Z1uErUHRthoVpd0EkrovRVbIQ9mpOIcRVg0bO0vy8S/N/l8fRdfCrPFKvS0DigkFz+QHbHRzN+1n7YWql4oY3wLXs1Dxi1CtNGUWrLlPm4CGFa0rndqHLYLiCGvXed6v/exSuR5Rjg3be1fkBQ2BuQ/nTo03Ek+Hua6yTaXGn0URJW2/auWHpy7DIybBeMCW75VhwLIhqw7B7JRkqZYYsrXOKtZmOuEInHqhcu9+2fZFKhw6vUTvrRfEqtS9sWHbPw6MEryh+TW0SG5Y91XAJNlH8hi6wRUZqsNdE8NsYfoffK/iDaKj/yNAwiz3DmrDHeKHZC3rs0un4zNw+q8AYuHOI+mWTew0Z2x7LO+klu8Z5gmJ1ZdhPlulpF6vo1ExzkC60FDm1x7K4KxtS7in4E8OWK3JVwRsMG5dmpeMmYMbNED9zAJWIi8s/zfaLHxbkSDcjGhXqu8P4NHF9ht4c4gzTGG9OvgLWXAvlPKqaW85jzc+JWoHPim8I0XMj8SWg4ibSuwmfI8rOQBKfxxcAOXsKoqsXsy/iS9KPOL6Mp8mGmH0FXyVNX6N5hLieoZHhWXw98KQiRNqqiBR5FTX3tcygjuEVbOil2UaGvtYZ3CK4/0mTRobLSO4JJULTaLuM7XvCzYnwNHa0R+TY/izuaq6PNJ/DmnNIT6NDE0tKhM/jYCIcUI9cxD3ABQxO474ZPFCJZCI0A60Cx1/EY1K06unncIbGg3uiiehrOFG0VZLPAYlo8DYaH5vBeCWkpkWMZ2YZA7NzuefYVWfn79YmX6bohGT0+1BDzy2Uw61oQiN20DONFnQhiWNopSteG91gUngU2yir2ykHOyjSO3EJu/Av3I7/4A68iT1UlfeyEPbJzB0iFDxFdzaBiCjx/w3foFmY9L6Gb5KlCNn4O57Dt0TmWaSYYZo9j29T1laTxu/gu5S57xF5E+U34P9+gf95/KDE9QJxvUhcDYj8F3UKRhRsfgenFSQVbA+9jTEa3kL1m4i+RZw/lKj7EUn/GE/SU2C0RSKF/mchGZGELrkYNfhYcJLhJxSoQDBJo/hWUfnSAslDcyQrSpIvLW+yr4zJCvErS0GwjyIgcL8+yLjbEoz5QtKnMbnQlXulxvpAqrSX1suMMKLuwu6C7hcozmInJlvm4+4yxnqTr0OhzXs2eQEfnMbHzva1TuNTgkCyG3ALNtMFsVJa3Ui5ByGnBkNYh+P09SR9vZ/y8wCh60HpTTPZaSBknMVP5d5NlvxKFvyqoVrwM1ptkFsVFW9jg4KxgwrZCRey+DKC6P1C7vk6kvolaTvn4TymddrcF3QqCjP0qRZiEQwX5fNX8nmJoAgqZgyv48/4CxL/A1BLAwQUAAAICABRY5daLGJIfRsDAACVBwAAQQAAAGNvbS9lbGlhdHJhL2RhdGFwcmVwcGVyL3BsdWdpbi9Mb2dFdmVudFRpbWVDb3JyZWxhdG9yQ29uZmlnLmNsYXNzpZRtU9NAEMf3Sh9om9KChVp5sirYFiGiAmKhiojOYEcZyvQtc7TXGkiTTh4Y+FY6I6PjCz+AH8pxL4mhpFff2Jkmd7v/3fvtZpNfv3/8BIANeJ2AEIzEICxBBKIEMqf0nMoq1Tryx5NT1rQIRLcUTbGqBEaKpUYE3F8kAQlIxkCSIAVjBCacOEvpMvmNbVBL0TUCcb1dZ01da5kEcsX9Um1QVIlDBsZjMCHBLcgSqDT1rsxUhVoGlVvUoj2D9XrMkHuq3VE0uaZ39s6ZZh1hkl3dMJhKLd3Y1bW20iGQ6hi63bsGyA47cUqCHNwmMGpa1LDes0usoHZdet0yFK3jKO9IMM2VCUfZoKrNuHlWgjlulnhudHV7mIQ77kpQ4I5xB+WQtdF+YLC2ckEgf2hrXN9QTOVEZTuaplsOE/ZHrvHK29S0mHHRVeVT2jwzdU2mvkjex/2BoWM3rMsKgcg5h8EinZOO8YzjM3Z53PMOizvA3EQg6a69gDE3oOW3SWqxNrVVtzoCoTXkSfmFuSni/p5AeFdvoS5dUzT2we6eMOOIYj28h3qTqg1qKHzvGcPWJwUTbtf+49FiuckOs+r+08oWS4PPixfaL5osDmpKDT4mnsorOGXe3GfQ/+7mJE0VhdOLWnNAmyuKpPzgNCY+6hsYtJhBS/bv4TdnJ2sKzYm6bhtN9lbhnS78q4UrnAlnM4MvPL6/+Mc5BQL3cJXE+338PzBhAbc5kWMRt9Mix0Pc4rvrOTKOI8QdRSiZUEbbnB/W513i3kdOIvzy4HUZ/XswgiuAdPkbkHIWYt8hfgXpL2gKwQpeJyCMV/xe4WoUjx3Du4wWyQ2Dx7CKdwJP4KmXUsY790XKX2Hys58o6hjzfcERP/gZrHnBVVTzdkXLS1cweY2RcKyzGDPnZJhyVV4GvnJ7SGBdCJIPghSEIBtikHwQZAFjFoeATHsgz2FTAJIOgpSEIC+gIgJJB0GWMWZlCIg7IwS2hB2ZCYKsCkG2xR2ZCYKsYcz6EJA5ryNVIch8EGRTCPJSDDIfBNnGmOoQkIIH8sqJ2fkDUEsDBBQAAAgIAGNSl1qfNNtCNwAAAEkAAAAoAAAATUVUQS1JTkYvZGF0YS1wcmVwcGVyLnBsdWdpbnMucHJvcGVydGllc23KwQ3AIAwDwI2yQYexUitFBWIFun8X4N6XFZbiXET5Yzc2VJRYpv5Fmyb4i+C6PIexN+zC4f1QSwECFAMUAAAICACcZpdaAAAAAAIAAAAAAAAACQAAAAAAAAAAABAA7UEAAAAATUVUQS1JTkYvUEsBAhQDFAAACAgAY1KXWrJ/Au4bAAAAGQAAABQAAAAAAAAAAAAAAKSBKQAAAE1FVEEtSU5GL01BTklGRVNULk1GUEsBAhQDFAAACAgAUWOXWgAAAAACAAAAAAAAAAQAAAAAAAAAAAAQAO1BdgAAAGNvbS9QSwECFAMUAAAICABRY5daAAAAAAIAAAAAAAAADAAAAAAAAAAAABAA7UGaAAAAY29tL2VsaWF0cmEvUEsBAhQDFAAACAgAUWOXWgAAAAACAAAAAAAAABgAAAAAAAAAAAAQAO1BxgAAAGNvbS9lbGlhdHJhL2RhdGFwcmVwcGVyL1BLAQIUAxQAAAgIAJxml1oAAAAAAgAAAAAAAAAfAAAAAAAAAAAAEADtQf4AAABjb20vZWxpYXRyYS9kYXRhcHJlcHBlci9wbHVnaW4vUEsBAhQDFAAACAgAnGaXWvV1RGyLCAAAyRUAADsAAAAAAAAAAAAAAKSBPQEAAGNvbS9lbGlhdHJhL2RhdGFwcmVwcGVyL3BsdWdpbi9Mb2dFdmVudFRpbWVDb3JyZWxhdG9yLmNsYXNzUEsBAhQDFAAACAgAUWOXWixiSH0bAwAAlQcAAEEAAAAAAAAAAAAAAKSBIQoAAGNvbS9lbGlhdHJhL2RhdGFwcmVwcGVyL3BsdWdpbi9Mb2dFdmVudFRpbWVDb3JyZWxhdG9yQ29uZmlnLmNsYXNzUEsBAhQDFAAACAgAY1KXWp8020I3AAAASQAAACgAAAAAAAAAAAAAAKSBmw0AAE1FVEEtSU5GL2RhdGEtcHJlcHBlci5wbHVnaW5zLnByb3BlcnRpZXNQSwUGAAAAAAkACQCmAgAAGA4AAAAA"
 #    authentication:
 #      http_basic:
 #        username: admin
@@ -65,9 +78,9 @@ metadata:
 spec:
   clusterIP: None
   ports:
-    - name: "21890"
-      port: 21890
-      targetPort: 21890
+    - name: "2021"
+      port: 2021
+      targetPort: 2021
   selector:
     app: data-prepper
 status:
@@ -111,10 +124,10 @@ spec:
         app: data-prepper
     spec:
       containers:
-        - image: opensearchproject/data-prepper:2
+        - image: opensearchproject/data-prepper:2.10.3
           name: data-prepper
           ports:
-            - containerPort: 21890
+            - containerPort: 2021
           resources: {}
           volumeMounts:
             - name: prepper-configmap-config
@@ -123,6 +136,12 @@ spec:
             - name: prepper-configmap-pipelines
               mountPath: /usr/share/data-prepper/pipelines/pipelines.yaml
               subPath: pipelines.yaml
+            - name: log4j
+              mountPath: /usr/share/data-prepper/config/log4j2-rolling.properties
+              subPath: log4j2-rolling.properties
+            - name: plugin
+              mountPath: /usr/share/data-prepper/lib/data-prepper-config-error-agg-plugin.jar
+              subPath: data-prepper-config-error-agg-plugin.jar
       restartPolicy: Always
       serviceAccountName: ""
       volumes:
@@ -138,5 +157,17 @@ spec:
             items:
               - key: pipelines.yaml
                 path: pipelines.yaml
+        - name: log4j
+          configMap:
+            name: data-prepper-config
+            items:
+              - key: log4j2-rolling.properties
+                path: log4j2-rolling.properties
+        - name: plugin
+          configMap:
+            name: data-prepper-config
+            items:
+              - key: data-prepper-config-error-agg-plugin.jar
+                path: data-prepper-config-error-agg-plugin.jar
 status: {}
 ---
