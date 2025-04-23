@@ -1,0 +1,149 @@
+PUT _index_template/audit_logs
+{
+  "index_patterns": [
+    "security-auditlog*"
+  ],
+  "template": {
+    "settings": {
+      "number_of_shards": 2,
+      "number_of_replicas": 1
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "audit_category": {
+          "type": "keyword"
+        },
+        "audit_cluster_name": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "audit_compliance_diff_content": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "audit_compliance_diff_is_noop": {
+          "type": "boolean"
+        },
+        "audit_compliance_doc_version": {
+          "type": "long"
+        },
+        "audit_compliance_operation": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "audit_format_version": {
+          "type": "long"
+        },
+        "audit_node_host_address": {
+          "type": "ip"
+        },
+        "audit_node_host_name": {
+          "type": "keyword"
+        },
+        "audit_node_id": {
+          "type": "keyword"
+        },
+        "audit_node_name": {
+          "type": "keyword"
+        },
+        "audit_request_body": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "audit_request_effective_user": {
+          "type": "keyword"
+        },
+        "audit_request_layer": {
+          "type": "keyword"
+        },
+        "audit_request_origin": {
+          "type": "keyword"
+        },
+        "audit_request_privilege": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "audit_request_remote_address": {
+          "type": "ip"
+        },
+        "audit_trace_doc_id": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "audit_trace_indices": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "audit_trace_resolved_indices": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "audit_trace_shard_id": {
+          "type": "long"
+        },
+        "audit_trace_task_id": {
+          "type": "keyword"
+        },
+        "audit_transport_headers": {
+          "properties": {
+            "X-Opaque-Id": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            }
+          }
+        },
+        "audit_transport_request_type": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}
