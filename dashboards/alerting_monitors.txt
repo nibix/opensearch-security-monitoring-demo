@@ -1,0 +1,336 @@
+curl -XGET https://admin:admin@localhost:9200/_plugins/_alerting/monitors/_search?pretty -k -H "Content-Type: application/json" --data '{
+  "query": {
+    "match" : {
+      "monitor.name": "Changes to Security"
+    }
+  }
+}'
+
+{
+  "took" : 12,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 1,
+    "successful" : 1,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : {
+      "value" : 1,
+      "relation" : "eq"
+    },
+    "max_score" : 1.873715,
+    "hits" : [
+      {
+        "_index" : ".opendistro-alerting-config",
+        "_id" : "OCFBaZYBNzeaS266S4zR",
+        "_version" : 1,
+        "_seq_no" : 16,
+        "_primary_term" : 1,
+        "_score" : 1.873715,
+        "_source" : {
+          "type" : "monitor",
+          "schema_version" : 0,
+          "name" : "Changes to Security",
+          "monitor_type" : "doc_level_monitor",
+          "enabled" : true,
+          "enabled_time" : 1745522609078,
+          "schedule" : {
+            "period" : {
+              "interval" : 1,
+              "unit" : "MINUTES"
+            }
+          },
+          "inputs" : [
+            {
+              "doc_level_input" : {
+                "description" : "",
+                "indices" : [
+                  "security-auditlog*"
+                ],
+                "queries" : [
+                  {
+                    "id" : "1d733113-d4df-45a5-a1f7-ed8fcd3d077f",
+                    "name" : "COMPLIANCE_INTERNAL_CONFIG_WRITE",
+                    "fields" : [ ],
+                    "query" : "audit_category:\"COMPLIANCE_INTERNAL_CONFIG_WRITE\"",
+                    "tags" : [ ],
+                    "query_field_names" : [ ]
+                  }
+                ],
+                "fan_out_enabled" : true
+              }
+            }
+          ],
+          "triggers" : [
+            {
+              "document_level_trigger" : {
+                "id" : "NiFBaZYBNzeaS266S4y1",
+                "name" : "Change occurred",
+                "severity" : "3",
+                "condition" : {
+                  "script" : {
+                    "source" : "query[name=COMPLIANCE_INTERNAL_CONFIG_WRITE]",
+                    "lang" : "painless"
+                  }
+                },
+                "actions" : [
+                  {
+                    "id" : "notification729563",
+                    "name" : "Webhook",
+                    "destination_id" : "3jYHaZYB9hZUErZbYknX",
+                    "message_template" : {
+                      "source" : "Monitor {{ctx.monitor.name}} just entered alert status. Please investigate the issue.\n  - Trigger: {{ctx.trigger.name}}\n  - Severity: {{ctx.trigger.severity}}\n  - Period start: {{ctx.periodStart}} UTC\n  - Period end: {{ctx.periodEnd}} UTC",
+                      "lang" : "mustache"
+                    },
+                    "throttle_enabled" : false,
+                    "subject_template" : {
+                      "source" : "Alerting Notification action",
+                      "lang" : "mustache"
+                    },
+                    "action_execution_policy" : {
+                      "action_execution_scope" : {
+                        "per_alert" : {
+                          "actionable_alerts" : [ ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "last_update_time" : 1745522609078,
+          "data_sources" : {
+            "query_index" : ".opensearch-alerting-queries",
+            "findings_index" : ".opensearch-alerting-finding-history-write",
+            "findings_index_pattern" : "<.opensearch-alerting-finding-history-{now/d}-1>",
+            "alerts_index" : ".opendistro-alerting-alerts",
+            "alerts_history_index" : ".opendistro-alerting-alert-history-write",
+            "alerts_history_index_pattern" : "<.opendistro-alerting-alert-history-{now/d}-1>",
+            "comments_index" : ".opensearch-alerting-comments-history-write",
+            "comments_index_pattern" : "<.opensearch-alerting-comments-history-{now/d}-1>",
+            "query_index_mappings_by_type" : { },
+            "findings_enabled" : false
+          },
+          "delete_query_index_in_every_run" : false,
+          "should_create_single_alert_for_findings" : false,
+          "owner" : "alerting"
+        }
+      }
+    ]
+  }
+}
+
+curl -XGET https://admin:admin@localhost:9200/_plugins/_alerting/monitors/_search?pretty -k -H "Content-Type: application/json" --data '{
+  "query": {
+    "match" : {
+      "monitor.name": "Failed Login"
+    }
+  }
+}'
+{
+  "took" : 24,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 1,
+    "successful" : 1,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : {
+      "value" : 1,
+      "relation" : "eq"
+    },
+    "max_score" : 1.6862843,
+    "hits" : [
+      {
+        "_index" : ".opendistro-alerting-config",
+        "_id" : "kTYRaZYB9hZUErZb-Evt",
+        "_version" : 1,
+        "_seq_no" : 11,
+        "_primary_term" : 1,
+        "_score" : 1.6862843,
+        "_source" : {
+          "type" : "monitor",
+          "schema_version" : 0,
+          "name" : "Failed Login",
+          "monitor_type" : "bucket_level_monitor",
+          "enabled" : true,
+          "enabled_time" : 1745519507653,
+          "schedule" : {
+            "period" : {
+              "interval" : 1,
+              "unit" : "MINUTES"
+            }
+          },
+          "inputs" : [
+            {
+              "search" : {
+                "indices" : [
+                  "security-auditlog*"
+                ],
+                "query" : {
+                  "size" : 0,
+                  "query" : {
+                    "bool" : {
+                      "filter" : [
+                        {
+                          "range" : {
+                            "@timestamp" : {
+                              "from" : "{{period_end}}||-1m",
+                              "to" : "{{period_end}}",
+                              "include_lower" : true,
+                              "include_upper" : true,
+                              "format" : "epoch_millis",
+                              "boost" : 1.0
+                            }
+                          }
+                        },
+                        {
+                          "term" : {
+                            "audit_category" : {
+                              "value" : "FAILED_LOGIN",
+                              "boost" : 1.0
+                            }
+                          }
+                        }
+                      ],
+                      "adjust_pure_negative" : true,
+                      "boost" : 1.0
+                    }
+                  },
+                  "aggregations" : {
+                    "composite_agg" : {
+                      "composite" : {
+                        "size" : 10,
+                        "sources" : [
+                          {
+                            "audit_category" : {
+                              "terms" : {
+                                "field" : "audit_category",
+                                "missing_bucket" : false,
+                                "order" : "asc"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "triggers" : [
+            {
+              "bucket_level_trigger" : {
+                "id" : "jzYRaZYB9hZUErZb-EvD",
+                "name" : "Failed Login Attempts",
+                "severity" : "1",
+                "condition" : {
+                  "buckets_path" : {
+                    "_count" : "_count"
+                  },
+                  "parent_bucket_path" : "composite_agg",
+                  "script" : {
+                    "source" : "params._count > 5",
+                    "lang" : "painless"
+                  },
+                  "gap_policy" : "skip"
+                },
+                "actions" : [
+                  {
+                    "id" : "notification696612",
+                    "name" : "Webhook",
+                    "destination_id" : "3jYHaZYB9hZUErZbYknX",
+                    "message_template" : {
+                      "source" : "Monitor {{ctx.monitor.name}} just entered alert status. Please investigate the issue.\n  - Trigger: {{ctx.trigger.name}}\n  - Severity: {{ctx.trigger.severity}}\n  - Period start: {{ctx.periodStart}} UTC\n  - Period end: {{ctx.periodEnd}} UTC\n\n  - Deduped Alerts:\n  {{#ctx.dedupedAlerts}}\n    * {{id}} : {{bucket_keys}}\n  {{/ctx.dedupedAlerts}}\n\n  - New Alerts:\n  {{#ctx.newAlerts}}\n    * {{id}} : {{bucket_keys}}\n  {{/ctx.newAlerts}}\n\n  - Completed Alerts:\n  {{#ctx.completedAlerts}}\n    * {{id}} : {{bucket_keys}}\n  {{/ctx.completedAlerts}}",
+                      "lang" : "mustache"
+                    },
+                    "throttle_enabled" : false,
+                    "subject_template" : {
+                      "source" : "Alerting Notification action",
+                      "lang" : "mustache"
+                    },
+                    "action_execution_policy" : {
+                      "action_execution_scope" : {
+                        "per_alert" : {
+                          "actionable_alerts" : [
+                            "DEDUPED",
+                            "NEW"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "last_update_time" : 1745519507653,
+          "data_sources" : {
+            "query_index" : ".opensearch-alerting-queries",
+            "findings_index" : ".opensearch-alerting-finding-history-write",
+            "findings_index_pattern" : "<.opensearch-alerting-finding-history-{now/d}-1>",
+            "alerts_index" : ".opendistro-alerting-alerts",
+            "alerts_history_index" : ".opendistro-alerting-alert-history-write",
+            "alerts_history_index_pattern" : "<.opendistro-alerting-alert-history-{now/d}-1>",
+            "comments_index" : ".opensearch-alerting-comments-history-write",
+            "comments_index_pattern" : "<.opensearch-alerting-comments-history-{now/d}-1>",
+            "query_index_mappings_by_type" : { },
+            "findings_enabled" : false
+          },
+          "delete_query_index_in_every_run" : false,
+          "should_create_single_alert_for_findings" : false,
+          "owner" : "alerting"
+        }
+      }
+    ]
+  }
+}
+
+curl -XGET https://admin:admin@localhost:9200/_plugins/_notifications/channels?pretty -k
+{
+  "start_index" : 0,
+  "total_hits" : 1,
+  "total_hit_relation" : "eq",
+  "channel_list" : [
+    {
+      "config_id" : "3jYHaZYB9hZUErZbYknX",
+      "name" : "Webhook",
+      "description" : "",
+      "config_type" : "webhook",
+      "is_enabled" : true
+    }
+  ]
+}
+
+curl -XGET https://admin:admin@localhost:9200/_plugins/_notifications/configs/3jYHaZYB9hZUErZbYknX?pretty -k
+{
+  "start_index" : 0,
+  "total_hits" : 1,
+  "total_hit_relation" : "eq",
+  "config_list" : [
+    {
+      "config_id" : "3jYHaZYB9hZUErZbYknX",
+      "last_updated_time_ms" : 1745518813909,
+      "created_time_ms" : 1745518813909,
+      "config" : {
+        "name" : "Webhook",
+        "description" : "",
+        "config_type" : "webhook",
+        "is_enabled" : true,
+        "webhook" : {
+          "url" : "http://host.docker.internal:5005/webhook",
+          "header_params" : {
+            "Content-Type" : "application/json"
+          },
+          "method" : "POST"
+        }
+      }
+    }
+  ]
+}
