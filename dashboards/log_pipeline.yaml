@@ -1,0 +1,25 @@
+log-pipeline:
+  source:
+    http:
+      ssl: false
+  processor:
+    # 1) turn each JSON line into fields
+    - parse_json: {}                      # defaults: source="message", destination=root :contentReference[oaicite:0]{index=0}
+
+    - drop_events:
+        drop_when: '/audit_category != "AUTHENTICATED" or audit_rest_request_path != "/_plugins/_security/authinfo' 
+
+    # 3) aggregate by effective user, 1h window, drop duplicates
+    - aggregate:
+        group_duration: "3600s"              # keep each user’s group open for one hour
+        identification_keys:
+          - "audit_request_effective_user"
+        action:
+          remove_duplicates:              # emit first event per user, drop subsequent ones :contentReference[oaicite:1]{index=1}
+  sink:
+    - opensearch:
+        hosts: [ "https://host.docker.internal:9200" ]
+        insecure: true
+        username: admin
+        password: admin
+        index: unique_auth_sessions
