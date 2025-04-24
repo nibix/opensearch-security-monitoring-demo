@@ -7,7 +7,7 @@ log-pipeline:
     - parse_json: {}                      # defaults: source="message", destination=root :contentReference[oaicite:0]{index=0}
 
     - drop_events:
-        drop_when: '/audit_category != "AUTHENTICATED" or audit_rest_request_path != "/_plugins/_security/authinfo' 
+        drop_when: '/audit_category != "AUTHENTICATED" or /audit_rest_request_path != "/_plugins/_security/authinfo"'
 
     # 3) aggregate by effective user, 1h window, drop duplicates
     - aggregate:
