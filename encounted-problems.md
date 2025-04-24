@@ -22,3 +22,12 @@
 ## Audit logging
 
 - Properties for audit.yml described in https://docs.opensearch.org/docs/latest/security/audit-logs/index/#audit-log-settings are wrong
+
+
+# Reported issues and filed PRs
+
+- https://github.com/opensearch-project/security/pull/5279
+- https://github.com/opensearch-project/alerting-dashboards-plugin/pull/1234
+- https://github.com/opensearch-project/documentation-website/issues/9723
+- https://github.com/cwperks/security/pull/49
+- https://github.com/opensearch-project/opensearch-k8s-operator/pull/1000
